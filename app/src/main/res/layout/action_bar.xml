@@ -16,32 +16,37 @@
 -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="horizontal"
+    android:orientation="vertical"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content" >
-    <Button
-        android:id="@+id/hide"
-        android:text="@string/hide"
-        android:layout_height="wrap_content"
-        android:layout_width="65dp" />
-    <Button
-        android:id="@+id/less"
-        android:text="@string/less"
-        android:layout_height="wrap_content"
-        android:layout_width="40dp" />
-    <Button
-        android:id="@+id/level"
-        android:text="@string/level"
-        android:layout_height="wrap_content"
-        android:layout_width="40dp" />
-    <Button
-        android:id="@+id/more"
-        android:text="@string/more"
-        android:layout_height="wrap_content"
-        android:layout_width="40dp" />
-    <Button
-        android:id="@+id/exit"
-        android:text="@string/exit"
-        android:layout_height="wrap_content"
-        android:layout_width="60dp" />
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" >
+        <Button
+            android:id="@+id/hide"
+            android:text="@string/hide"
+            android:layout_height="wrap_content"
+            android:layout_width="65dp" />
+        <Button
+            android:id="@+id/less"
+            android:text="@string/less"
+            android:layout_height="wrap_content"
+            android:layout_width="40dp" />
+        <Button
+            android:id="@+id/level"
+            android:text="@string/level"
+            android:layout_height="wrap_content"
+            android:layout_width="40dp" />
+        <Button
+            android:id="@+id/more"
+            android:text="@string/more"
+            android:layout_height="wrap_content"
+            android:layout_width="40dp" />
+        <Button
+            android:id="@+id/exit"
+            android:text="@string/exit"
+            android:layout_height="wrap_content"
+            android:layout_width="60dp" />
+    </LinearLayout>
 </LinearLayout>

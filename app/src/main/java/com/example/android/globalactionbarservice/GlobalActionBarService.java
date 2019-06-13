@@ -28,7 +28,13 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.Toast;
+
+import java.util.Arrays;
 
 public class GlobalActionBarService extends AccessibilityService
     implements GestureDetector.OnGestureListener, GestureDetector.OnDoubleTapListener{
@@ -154,13 +160,16 @@ public class GlobalActionBarService extends AccessibilityService
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if(listen) {
+        if(!listen)
+            return;
+        if( level > 0 ){
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED:
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                    if(level<2)break;
-                case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
                     if(level<1)break;
+                case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
+                case AccessibilityEvent.TYPE_ANNOUNCEMENT:
+                    if(level<2)break;
                     Log.i("Gesture:" + AccessibilityEvent.eventTypeToString(event.getEventType()),
                         removeTrivialFields(event.toString()));
                     AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
@@ -170,13 +179,22 @@ public class GlobalActionBarService extends AccessibilityService
                 case AccessibilityEvent.TYPE_WINDOWS_CHANGED:
                 case AccessibilityEvent.TYPE_VIEW_SCROLLED:
                 case AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED:
-                case AccessibilityEvent.TYPE_VIEW_HOVER_EXIT:
                 case AccessibilityEvent.TYPE_VIEW_FOCUSED:
                 case AccessibilityEvent.TYPE_VIEW_SELECTED:
                 case AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED:
-                    if(level<3)break;
+                    if(level<4)break;
+                case AccessibilityEvent.TYPE_VIEW_HOVER_EXIT:
                 default:
                     Log.i("Gesture:onAccessibilityEvent", removeTrivialFields(event.toString()));
+            }
+        } else {
+            int event_type = event.getEventType();
+            for( int x=0; x<event_type_list.length; ++x ){
+                if( event_state_list[x] && event_type==event_type_list[x] ){
+                    logi("Gesture:onAccessibilityEvent", event.toString());
+                    if(show_details)
+                        logi("Gesture:nodeTree", traverseNodeInfo(getRootInActiveWindow()));
+                }
             }
         }
     }
@@ -199,18 +217,48 @@ public class GlobalActionBarService extends AccessibilityService
         return false;
     }
 
+    public static int [] event_type_list = {
+        AccessibilityEvent.TYPE_VIEW_CLICKED,
+        AccessibilityEvent.TYPE_VIEW_LONG_CLICKED,
+        AccessibilityEvent.TYPE_VIEW_SELECTED,
+        AccessibilityEvent.TYPE_VIEW_FOCUSED,
+        AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
+        AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED,
+        AccessibilityEvent.TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY,
+        AccessibilityEvent.TYPE_VIEW_SCROLLED,
+        AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+        AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+        AccessibilityEvent.TYPE_WINDOWS_CHANGED,
+        AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED,
+        AccessibilityEvent.TYPE_VIEW_HOVER_ENTER,
+        AccessibilityEvent.TYPE_VIEW_HOVER_EXIT,
+        AccessibilityEvent.TYPE_ANNOUNCEMENT,
+        AccessibilityEvent.TYPE_TOUCH_INTERACTION_START,
+        AccessibilityEvent.TYPE_TOUCH_INTERACTION_END,
+        AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_START,
+        AccessibilityEvent.TYPE_TOUCH_EXPLORATION_GESTURE_END,
+        AccessibilityEvent.TYPE_GESTURE_DETECTION_START,
+        AccessibilityEvent.TYPE_GESTURE_DETECTION_END
+    };
+    public boolean event_state_list [];
+
     FrameLayout mLayout;
     public int level;
-    public boolean show, listen;
+    public boolean show, listen, show_list, show_details;
+    private LinearLayout layout;
+
 
     protected void onServiceConnected() {
         super.onServiceConnected();
-        level = 0;
+        level = 1;
         show = listen = true;
+        show_list = show_details = false;
+        event_state_list = new boolean [event_type_list.length];
+        Arrays.fill(event_state_list, false);
 
-        // Create an overlay and display the action bar
-        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-        mLayout = new FrameLayout(this);
+        // Part 1: Create an overlay and display the action bar
+        WindowManager wm = (WindowManager) getSystemService( WINDOW_SERVICE );
+        mLayout = new FrameLayout(this );
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
         lp.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
         lp.format = PixelFormat.TRANSLUCENT;
@@ -224,62 +272,6 @@ public class GlobalActionBarService extends AccessibilityService
         inflater.inflate(R.layout.action_bar, mLayout);
         wm.addView(mLayout, lp);
 
-        // 1. show-hide button
-        Button hideButton = (Button) mLayout.findViewById(R.id.hide);
-        hideButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                show = !show;
-                int visibility = (show?View.VISIBLE:View.GONE);
-                ((Button)mLayout.findViewById(R.id.more)).setVisibility(visibility);
-                ((Button)mLayout.findViewById(R.id.less)).setVisibility(visibility);
-                ((Button)mLayout.findViewById(R.id.exit)).setVisibility(visibility);
-                ((Button)mLayout.findViewById(R.id.level)).setVisibility(visibility);
-                ((Button)mLayout.findViewById(R.id.hide)).setText(show?R.string.hide:R.string.show);
-            }
-        });
-
-        // 2. less button
-        Button lessButton = (Button) mLayout.findViewById(R.id.less);
-        lessButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                --level;
-                level = (level<0?0:level);
-                ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
-            }
-        });
-
-        // 3. level button
-        Button levelButton = (Button) mLayout.findViewById(R.id.level);
-        levelButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                listen = !listen;
-                ((Button)mLayout.findViewById(R.id.level)).setTextColor(listen?0xff000000:0xff7f7f7f);
-            }
-        });
-
-        // 4. more button
-        Button moreButton = (Button) mLayout.findViewById(R.id.more);
-        moreButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                ++level;
-                level = (level>3?3:level);
-                ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
-            }
-        });
-
-        // 5. exit button
-        Button exitButton = (Button) mLayout.findViewById(R.id.exit);
-        exitButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                disableSelf();
-            }
-        });
-
 //        AccessibilityServiceInfo info = new AccessibilityServiceInfo();
 //        info.flags = AccessibilityServiceInfo.DEFAULT
 //            | AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
@@ -292,5 +284,135 @@ public class GlobalActionBarService extends AccessibilityService
 //        info.eventTypes = AccessibilityEvent.TYPES_ALL_MASK;
 //        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_ALL_MASK;
 //        setServiceInfo(info);
+
+        // Part 2: Create invisible linear layout for checkbox
+        layout = new LinearLayout(this);
+        layout.setOrientation( LinearLayout.VERTICAL );
+        layout.setVisibility( show_list ?LinearLayout.VISIBLE:LinearLayout.GONE );
+        layout.setBackgroundColor(0xeeffffff);
+        lp = new WindowManager.LayoutParams();
+        lp.width = WindowManager.LayoutParams.WRAP_CONTENT;
+        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        layout.setLayoutParams(lp);
+
+        lp = new WindowManager.LayoutParams();
+        lp.height = 80;
+        for ( int x=0; x<event_type_list.length; ++x ){
+            int event_type = event_type_list[x];
+            CheckBox cb = new CheckBox(this );
+            cb.setText( AccessibilityEvent.eventTypeToString( event_type ) );
+            cb.setScaleX( 0.8f );
+            cb.setScaleY( 0.8f );
+            cb.setTextScaleX( 0.8f );
+            cb.setLayoutParams( lp );
+            cb.setId( x );
+            cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    event_state_list[buttonView.getId()] = isChecked;
+                    level = (level>0?-level:level);
+                    ((Button)mLayout.findViewById(R.id.level)).setText("*");
+                }
+            });
+            layout.addView( cb );
+        }
+        ((LinearLayout)mLayout.getChildAt(0 )).addView(layout);
+        layout.setPadding(-120,0,0,0);
+
+
+        // 1. show-hide button
+        Button hideButton = (Button) mLayout.findViewById(R.id.hide);
+        hideButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                show = !show;
+                int visibility = (show?View.VISIBLE:View.GONE);
+                ((Button)mLayout.findViewById(R.id.more)).setVisibility(visibility);
+                ((Button)mLayout.findViewById(R.id.less)).setVisibility(visibility);
+                ((Button)mLayout.findViewById(R.id.exit)).setVisibility(visibility);
+                ((Button)mLayout.findViewById(R.id.level)).setVisibility(visibility);
+                ((Button)mLayout.findViewById(R.id.hide)).setText(show?R.string.hide:R.string.show);
+                layout.setVisibility(show_list ?visibility:View.GONE);
+            }
+        });
+
+        // 2. less button
+        final Button lessButton = (Button) mLayout.findViewById(R.id.less);
+        lessButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if( level < 0 )
+                    level = -level;
+                else {
+                    --level;
+                    level = (level < 1 ? 1 : level);
+                }
+                ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
+                show_list = false;
+                layout.setVisibility(View.GONE);
+            }
+        });
+        lessButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                Toast.makeText(getApplicationContext(),"Details will NOT be shown",Toast.LENGTH_SHORT).show();
+                show_details = false;
+                return true;
+            }
+        });
+
+        // 3. level button
+        final Button levelButton = (Button) mLayout.findViewById(R.id.level);
+        levelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                listen = !listen;
+                ((Button)mLayout.findViewById(R.id.level)).setTextColor(listen?0xff000000:0xff7f7f7f);
+            }
+        });
+        levelButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                show_list = !show_list;
+                layout.setVisibility(show_list?View.VISIBLE:View.GONE);
+                return true;
+            }
+        });
+
+        // 4. more button
+        Button moreButton = (Button) mLayout.findViewById(R.id.more);
+        moreButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if( level < 0 )
+                    level = -level;
+                else {
+                    ++level;
+                    level = (level > 4 ? 4 : level);
+                }
+                ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
+                show_list = false;
+                layout.setVisibility(View.GONE);
+            }
+        });
+        moreButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                Toast.makeText(getApplicationContext(),"Details will be shown",Toast.LENGTH_SHORT).show();
+                show_details = true;
+                return true;
+            }
+        });
+
+        // 5. exit button
+        Button exitButton = (Button) mLayout.findViewById( R.id.exit );
+        exitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                disableSelf();
+            }
+        });
+
+        // initialize UI
+        ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
     }
 }
