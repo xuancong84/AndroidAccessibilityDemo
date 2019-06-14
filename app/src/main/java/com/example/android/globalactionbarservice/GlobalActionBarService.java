@@ -168,10 +168,10 @@ public class GlobalActionBarService extends AccessibilityService
             switch (event.getEventType()) {
                 case AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED:
                 case AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED:
-                    if(level<1)break;
+                    if(level<2)break;
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
                 case AccessibilityEvent.TYPE_ANNOUNCEMENT:
-                    if(level<2)break;
+                    if(level<3)break;
                     Log.i("Gesture:" + AccessibilityEvent.eventTypeToString(event.getEventType()),
                         removeTrivialFields(event.toString()));
                     AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
@@ -194,8 +194,11 @@ public class GlobalActionBarService extends AccessibilityService
             for( int x=0; x<event_type_list.length; ++x ){
                 if( event_state_list[x] && event_type==event_type_list[x] ){
                     logi("Gesture:onAccessibilityEvent", event.toString());
-                    if(show_details)
+                    if(show_details) {
+                        AccessibilityNodeInfo nodeInfo = event.getSource();
+                        logi("Gesture:nodeInfo", nodeInfo!=null?"null":nodeInfo.toString());
                         logi("Gesture:nodeTree", traverseNodeInfo(getRootInActiveWindow()));
+                    }
                 }
             }
         }
