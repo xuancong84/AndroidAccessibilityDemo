@@ -32,9 +32,11 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class GlobalActionBarService extends AccessibilityService
     implements GestureDetector.OnGestureListener, GestureDetector.OnDoubleTapListener{
@@ -247,6 +249,10 @@ public class GlobalActionBarService extends AccessibilityService
     public boolean show, listen, show_list, show_details;
     private LinearLayout layout;
 
+    private void setLevelButton(){
+        ((Button)mLayout.findViewById(R.id.level)).setText(level<0?"*":(""+level));
+        ((Button)mLayout.findViewById(R.id.level)).setTextColor(listen?(show_details?0xffff0000:0xff000000):0xff7f7f7f);
+    }
 
     protected void onServiceConnected() {
         super.onServiceConnected();
@@ -295,8 +301,6 @@ public class GlobalActionBarService extends AccessibilityService
         lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
         layout.setLayoutParams(lp);
 
-        lp = new WindowManager.LayoutParams();
-        lp.height = 80;
         for ( int x=0; x<event_type_list.length; ++x ){
             int event_type = event_type_list[x];
             CheckBox cb = new CheckBox(this );
@@ -304,19 +308,19 @@ public class GlobalActionBarService extends AccessibilityService
             cb.setScaleX( 0.8f );
             cb.setScaleY( 0.8f );
             cb.setTextScaleX( 0.8f );
-            cb.setLayoutParams( lp );
             cb.setId( x );
             cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                     event_state_list[buttonView.getId()] = isChecked;
                     level = (level>0?-level:level);
-                    ((Button)mLayout.findViewById(R.id.level)).setText("*");
+                    setLevelButton();
                 }
             });
             layout.addView( cb );
         }
-        ((LinearLayout)mLayout.getChildAt(0 )).addView(layout);
-        layout.setPadding(-120,0,0,0);
+        ScrollView scrollView = new ScrollView(getApplicationContext());
+        scrollView.addView(layout);
+        ((LinearLayout)mLayout.getChildAt(0 )).addView(scrollView);
 
 
         // 1. show-hide button
@@ -346,8 +350,8 @@ public class GlobalActionBarService extends AccessibilityService
                     --level;
                     level = (level < 1 ? 1 : level);
                 }
-                ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
                 show_list = false;
+                setLevelButton();
                 layout.setVisibility(View.GONE);
             }
         });
@@ -356,6 +360,7 @@ public class GlobalActionBarService extends AccessibilityService
             public boolean onLongClick(View view) {
                 Toast.makeText(getApplicationContext(),"Details will NOT be shown",Toast.LENGTH_SHORT).show();
                 show_details = false;
+                setLevelButton();
                 return true;
             }
         });
@@ -366,7 +371,7 @@ public class GlobalActionBarService extends AccessibilityService
             @Override
             public void onClick(View view) {
                 listen = !listen;
-                ((Button)mLayout.findViewById(R.id.level)).setTextColor(listen?0xff000000:0xff7f7f7f);
+                setLevelButton();
             }
         });
         levelButton.setOnLongClickListener(new View.OnLongClickListener() {
@@ -389,8 +394,8 @@ public class GlobalActionBarService extends AccessibilityService
                     ++level;
                     level = (level > 4 ? 4 : level);
                 }
-                ((Button)mLayout.findViewById(R.id.level)).setText(""+level);
                 show_list = false;
+                setLevelButton();
                 layout.setVisibility(View.GONE);
             }
         });
@@ -399,6 +404,7 @@ public class GlobalActionBarService extends AccessibilityService
             public boolean onLongClick(View view) {
                 Toast.makeText(getApplicationContext(),"Details will be shown",Toast.LENGTH_SHORT).show();
                 show_details = true;
+                setLevelButton();
                 return true;
             }
         });
