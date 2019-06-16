@@ -17,6 +17,7 @@ package com.example.android.globalactionbarservice;
 import android.accessibilityservice.AccessibilityService;
 import android.graphics.PixelFormat;
 import android.util.Log;
+import android.content.Context;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -33,10 +34,11 @@ import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Scroller;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class GlobalActionBarService extends AccessibilityService
     implements GestureDetector.OnGestureListener, GestureDetector.OnDoubleTapListener{
@@ -151,6 +153,8 @@ public class GlobalActionBarService extends AccessibilityService
         return info;
     }
 
+    private static String logcat_text = "";
+    private static boolean clear_text = false;
     public static void logi(String tag, String s){
         for(int x=0, X=s.length()/4000; x<=X; ++x){
             if(x==X)
@@ -158,6 +162,12 @@ public class GlobalActionBarService extends AccessibilityService
             else
                 Log.i(tag, s.substring(x*4000, (x+1)*4000));
         }
+        logcat_text += tag + " " + s + "\n";
+        if(clear_text){
+            clear_text = false;
+            logcat_text = "";
+        }
+        logcat_view.setText(logcat_text);
     }
 
     @Override
@@ -172,8 +182,7 @@ public class GlobalActionBarService extends AccessibilityService
                 case AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED:
                 case AccessibilityEvent.TYPE_ANNOUNCEMENT:
                     if(level<3)break;
-                    Log.i("Gesture:" + AccessibilityEvent.eventTypeToString(event.getEventType()),
-                        removeTrivialFields(event.toString()));
+                    logi("Gesture:" + AccessibilityEvent.eventTypeToString(event.getEventType()), removeTrivialFields(event.toString()));
                     AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
                     logi("Gesture:nodeTree", traverseNodeInfo(nodeInfo));
                     break;
@@ -187,7 +196,7 @@ public class GlobalActionBarService extends AccessibilityService
                     if(level<4)break;
                 case AccessibilityEvent.TYPE_VIEW_HOVER_EXIT:
                 default:
-                    Log.i("Gesture:onAccessibilityEvent", removeTrivialFields(event.toString()));
+                    logi("Gesture:" + AccessibilityEvent.eventTypeToString(event.getEventType()), removeTrivialFields(event.toString()));
             }
         } else {
             int event_type = event.getEventType();
@@ -248,22 +257,21 @@ public class GlobalActionBarService extends AccessibilityService
     public boolean event_state_list [];
 
     FrameLayout mLayout;
-    public int level;
-    public boolean show, listen, show_list, show_details;
-    private LinearLayout layout;
+    public static int level = 1;
+    public static boolean show = true, listen = true, show_list = false, show_details = false, show_log = true;
+    private LinearLayout cb_select_list;
+    private static TextView logcat_view;
 
     private void setLevelButton(){
         ((Button)mLayout.findViewById(R.id.level)).setText(level<0?"*":(""+level));
-        ((Button)mLayout.findViewById(R.id.level)).setTextColor(listen?(show_details?0xffff0000:0xff000000):0xff7f7f7f);
+        ((Button)mLayout.findViewById(R.id.level)).setTextColor(listen?(show_details&&level<0?0xffff0000:0xff000000):0xff7f7f7f);
     }
 
     protected void onServiceConnected() {
         super.onServiceConnected();
-        level = 1;
-        show = listen = true;
-        show_list = show_details = false;
         event_state_list = new boolean [event_type_list.length];
         Arrays.fill(event_state_list, false);
+        final Context context = getApplicationContext();
 
         // Part 1: Create an overlay and display the action bar
         WindowManager wm = (WindowManager) getSystemService( WINDOW_SERVICE );
@@ -281,28 +289,10 @@ public class GlobalActionBarService extends AccessibilityService
         inflater.inflate(R.layout.action_bar, mLayout);
         wm.addView(mLayout, lp);
 
-//        AccessibilityServiceInfo info = new AccessibilityServiceInfo();
-//        info.flags = AccessibilityServiceInfo.DEFAULT
-//            | AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
-//            | AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-//            | AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY
-//            | AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-//            | AccessibilityServiceInfo.FLAG_REQUEST_FINGERPRINT_GESTURES
-//            | AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
-//            | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
-//        info.eventTypes = AccessibilityEvent.TYPES_ALL_MASK;
-//        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_ALL_MASK;
-//        setServiceInfo(info);
 
         // Part 2: Create invisible linear layout for checkbox
-        layout = new LinearLayout(this);
-        layout.setOrientation( LinearLayout.VERTICAL );
-        layout.setVisibility( show_list ?LinearLayout.VISIBLE:LinearLayout.GONE );
-        layout.setBackgroundColor(0xeeffffff);
-        lp = new WindowManager.LayoutParams();
-        lp.width = WindowManager.LayoutParams.WRAP_CONTENT;
-        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        layout.setLayoutParams(lp);
+        cb_select_list = (LinearLayout) mLayout.findViewById(R.id.cb_select_list);
+        show_list = (cb_select_list.getVisibility()==View.VISIBLE);
 
         for ( int x=0; x<event_type_list.length; ++x ){
             int event_type = event_type_list[x];
@@ -319,13 +309,23 @@ public class GlobalActionBarService extends AccessibilityService
                     setLevelButton();
                 }
             });
-            layout.addView( cb );
+            cb_select_list.addView( cb );
         }
-        ScrollView scrollView = new ScrollView(getApplicationContext());
-        scrollView.addView(layout);
-        ((LinearLayout)mLayout.getChildAt(0 )).addView(scrollView);
 
 
+        // Part 3: Create scrollable TextView to show the logcat_text
+        logcat_view = (TextView) mLayout.findViewById(R.id.logcat_view);
+        show_log = (logcat_view.getVisibility()==View.VISIBLE);
+        logcat_view.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                clear_text = true;
+                return true;
+            }
+        });
+
+
+        // Part 4: initialize buttons
         // 1. show-hide button
         Button hideButton = (Button) mLayout.findViewById(R.id.hide);
         hideButton.setOnClickListener(new View.OnClickListener() {
@@ -337,8 +337,16 @@ public class GlobalActionBarService extends AccessibilityService
                 ((Button)mLayout.findViewById(R.id.less)).setVisibility(visibility);
                 ((Button)mLayout.findViewById(R.id.exit)).setVisibility(visibility);
                 ((Button)mLayout.findViewById(R.id.level)).setVisibility(visibility);
-                ((Button)mLayout.findViewById(R.id.hide)).setText(show?R.string.hide:R.string.show);
-                layout.setVisibility(show_list ?visibility:View.GONE);
+                ((Button)mLayout.findViewById(R.id.hide)).setText(show ? R.string.hide : R.string.show);
+                cb_select_list.setVisibility(show_list ? visibility : View.GONE);
+            }
+        });
+        hideButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                show_log = !show_log;
+                logcat_view.setVisibility(show_log ? View.VISIBLE : View.GONE);
+                return true;
             }
         });
 
@@ -355,13 +363,13 @@ public class GlobalActionBarService extends AccessibilityService
                 }
                 show_list = false;
                 setLevelButton();
-                layout.setVisibility(View.GONE);
+                cb_select_list.setVisibility(View.GONE);
             }
         });
         lessButton.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                Toast.makeText(getApplicationContext(),"Details will NOT be shown",Toast.LENGTH_SHORT).show();
+                Toast.makeText(context,"Details will NOT be shown",Toast.LENGTH_SHORT).show();
                 show_details = false;
                 setLevelButton();
                 return true;
@@ -381,7 +389,7 @@ public class GlobalActionBarService extends AccessibilityService
             @Override
             public boolean onLongClick(View view) {
                 show_list = !show_list;
-                layout.setVisibility(show_list?View.VISIBLE:View.GONE);
+                cb_select_list.setVisibility(show_list?View.VISIBLE:View.GONE);
                 return true;
             }
         });
@@ -399,13 +407,13 @@ public class GlobalActionBarService extends AccessibilityService
                 }
                 show_list = false;
                 setLevelButton();
-                layout.setVisibility(View.GONE);
+                cb_select_list.setVisibility(View.GONE);
             }
         });
         moreButton.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                Toast.makeText(getApplicationContext(),"Details will be shown",Toast.LENGTH_SHORT).show();
+                Toast.makeText(context,"Details will be shown",Toast.LENGTH_SHORT).show();
                 show_details = true;
                 setLevelButton();
                 return true;

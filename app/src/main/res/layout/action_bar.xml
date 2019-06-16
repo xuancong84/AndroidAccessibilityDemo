@@ -49,4 +49,34 @@
             android:layout_height="wrap_content"
             android:layout_width="60dp" />
     </LinearLayout>
+    <ScrollView
+        android:id="@+id/cb_scroll"
+        android:scrollbars="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.5" >
+        <LinearLayout
+            android:id="@+id/cb_select_list"
+            android:visibility="gone"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#eeffffff" />
+    </ScrollView>
+    <ScrollView
+        android:id="@+id/logcat_scroll"
+        android:scrollbars="vertical"
+        android:scrollbarStyle="insideInset"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.5">
+        <TextView
+            android:id="@+id/logcat_view"
+            android:visibility="gone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ccffffff"
+            android:background="#80000000"
+            android:textSize="8dp" />
+    </ScrollView>
 </LinearLayout>
