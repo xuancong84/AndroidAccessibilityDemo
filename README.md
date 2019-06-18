@@ -16,11 +16,14 @@ The UI uses accessibility overlay, it presents 5 buttons:
   -  long-click: toggle event-selection dropdown menu
 - Button 4 (+)
   -  short-click: increment verbosity
-  -  long-click: enables showing details
+  -  long-click: enable showing details
 - Button 5 (EXIT)
   -  short-click: disable the accessibility service
+  -  long-click: toggle the display of own events
 - on-screen logcat display scroll TextView
   -  long-click: clear logcat content
+- event-selection dropdown menu
+  -  long-click: toggle all checkboxes
 
 Notes:
 - when "show-details" is enabled, the entire active window info will be printed out recursively

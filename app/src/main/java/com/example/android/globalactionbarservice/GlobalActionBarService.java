@@ -33,8 +33,6 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.Scroller;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -170,9 +168,12 @@ public class GlobalActionBarService extends AccessibilityService
         logcat_view.setText(logcat_text);
     }
 
+    private static boolean log_own = false;
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if(!listen)
+            return;
+        if(!log_own && CS2S(event.getPackageName()).equals(getPackageName()))
             return;
         if( level > 0 ){
             switch (event.getEventType()) {
@@ -201,7 +202,7 @@ public class GlobalActionBarService extends AccessibilityService
         } else {
             int event_type = event.getEventType();
             for( int x=0; x<event_type_list.length; ++x ){
-                if( event_state_list[x] && event_type==event_type_list[x] ){
+                if( event_type_cb[x].isChecked() && event_type==event_type_list[x] ){
                     logi("Gesture:onAccessibilityEvent", event.toString());
                     if(show_details) {
                         AccessibilityNodeInfo nodeInfo = event.getSource();
@@ -254,10 +255,10 @@ public class GlobalActionBarService extends AccessibilityService
         AccessibilityEvent.TYPE_GESTURE_DETECTION_START,
         AccessibilityEvent.TYPE_GESTURE_DETECTION_END
     };
-    public boolean event_state_list [];
+    public static CompoundButton event_type_cb[] = new CompoundButton [event_type_list.length];
 
     FrameLayout mLayout;
-    public static int level = 1;
+    public int level;
     public static boolean show = true, listen = true, show_list = false, show_details = false, show_log = true;
     private LinearLayout cb_select_list;
     private static TextView logcat_view;
@@ -269,9 +270,8 @@ public class GlobalActionBarService extends AccessibilityService
 
     protected void onServiceConnected() {
         super.onServiceConnected();
-        event_state_list = new boolean [event_type_list.length];
-        Arrays.fill(event_state_list, false);
         final Context context = getApplicationContext();
+        level = 1;
 
         // Part 1: Create an overlay and display the action bar
         WindowManager wm = (WindowManager) getSystemService( WINDOW_SERVICE );
@@ -304,12 +304,22 @@ public class GlobalActionBarService extends AccessibilityService
             cb.setId( x );
             cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    event_state_list[buttonView.getId()] = isChecked;
                     level = (level>0?-level:level);
                     setLevelButton();
                 }
             });
+            cb.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View view) {
+                    for( CompoundButton buttonView : event_type_cb )
+                        buttonView.toggle();
+                    level = (level>0?-level:level);
+                    setLevelButton();
+                    return true;
+                }
+            });
             cb_select_list.addView( cb );
+            event_type_cb[x] = cb;
         }
 
 
@@ -319,7 +329,12 @@ public class GlobalActionBarService extends AccessibilityService
         logcat_view.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                clear_text = true;
+                if( log_own )
+                    clear_text = true;
+                else {
+                    logcat_text = "";
+                    logcat_view.setText( logcat_text );
+                }
                 return true;
             }
         });
@@ -426,6 +441,14 @@ public class GlobalActionBarService extends AccessibilityService
             @Override
             public void onClick(View view) {
                 disableSelf();
+            }
+        });
+        exitButton.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                log_own = !log_own;
+                Toast.makeText(context, log_own?"Own events will be logged":"Own events will NOT be logged",Toast.LENGTH_SHORT).show();
+                return true;
             }
         });
 
