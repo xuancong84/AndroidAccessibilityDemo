@@ -117,7 +117,7 @@ public class GlobalActionBarService extends AccessibilityService
     }
 
     public static String CS2S(CharSequence seq){
-        return (seq==null?"":(String)seq);
+        return (seq==null?"null":(String)seq);
     }
 
     public static String traverseWindowInfo(AccessibilityWindowInfo info) {
@@ -138,7 +138,7 @@ public class GlobalActionBarService extends AccessibilityService
             try {
                 AccessibilityNodeInfo child = info.getChild(x);
                 ret += (x == 0 ? "=(" : "+(") + traverseNodeInfo(child) + ")";
-            }catch (Exception e){
+            } catch (Exception e) {
                 ret += (x == 0 ? "=(" : "+(") + "exception)";
             }
         }
@@ -206,7 +206,7 @@ public class GlobalActionBarService extends AccessibilityService
                     logi("Gesture:onAccessibilityEvent", event.toString());
                     if(show_details) {
                         AccessibilityNodeInfo nodeInfo = event.getSource();
-                        logi("Gesture:nodeInfo", nodeInfo!=null?"null":nodeInfo.toString());
+                        logi("Gesture:nodeInfo", nodeInfo==null?"null":nodeInfo.toString());
                         logi("Gesture:nodeTree", traverseNodeInfo(getRootInActiveWindow()));
                     }
                 }
