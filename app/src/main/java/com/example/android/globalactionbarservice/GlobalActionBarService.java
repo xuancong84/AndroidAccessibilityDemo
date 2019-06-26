@@ -145,27 +145,31 @@ public class GlobalActionBarService extends AccessibilityService
         return ret;
     }
 
-    public static AccessibilityNodeInfo getRoot(AccessibilityNodeInfo info){
-        while(info.getParent()!=null)
+    public static AccessibilityNodeInfo getRoot( AccessibilityNodeInfo info ) {
+        while( info.getParent() != null )
             info = info.getParent();
         return info;
     }
 
     private static String logcat_text = "";
     private static boolean clear_text = false;
-    public static void logi(String tag, String s){
-        for(int x=0, X=s.length()/4000; x<=X; ++x){
+    public static void logi( String tag, String s ) {
+        for ( int x=0, X=s.length()/4000; x<=X; ++x ) {
             if(x==X)
                 Log.i(tag, s.substring(x*4000));
             else
                 Log.i(tag, s.substring(x*4000, (x+1)*4000));
         }
         logcat_text += tag + " " + s + "\n";
-        if(clear_text){
+        while ( logcat_text.length() > 1000000 ) {
+            int p = logcat_text.indexOf('\n');
+            logcat_text = (p<0?"":logcat_text.substring(p+1));
+        }
+        if( clear_text ) {
             clear_text = false;
             logcat_text = "";
         }
-        logcat_view.setText(logcat_text);
+        logcat_view.setText( logcat_text );
     }
 
     private static boolean log_own = false;
