@@ -4,6 +4,8 @@ Accessibility service can be used in APPs that collect features for digital phen
 This demo is used to explore and test what information Android assessibility service API can capture on screen touches and events.
 You need to look at the logcat for all message logs.
 
+<img src="Screenshot_1.jpg" width="48%" /> <img src="Screenshot_2.jpg" width="48%" />
+
 The UI uses accessibility overlay, it presents 5 buttons:
 - Button 1 (SHOW/HIDE)
   -  short-click: toggle show/hide the panel
